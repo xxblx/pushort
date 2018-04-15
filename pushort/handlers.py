@@ -87,16 +87,22 @@ class BaseHandler(RequestHandler):
             url_dct['expires_time'] = expires_time
 
         url_inserted = False
+        add_rand = False  # additional randomization
         while not url_inserted:
             try:
-                short_part = yield self.get_url_hash(long_url)
+                short_part = yield self.get_url_hash(
+                    long_url,
+                    use_key=add_rand,
+                    use_salt=add_rand,
+                    use_person=add_rand
+                )
                 url_dct['short_part'] = short_part
                 url_dct['short_part_block'] = short_part[:2]
                 yield self.db.urls.insert(url_dct)
                 url_inserted = True
             except DuplicateKeyError:
                 # TODO: exception to logfile
-                pass
+                add_rand = True
 
         return short_part
 
@@ -131,16 +137,26 @@ class BaseHandler(RequestHandler):
         return dct
 
     @run_on_executor
-    def get_url_hash(self, url, digest_size=5, key=None, salt=None,
-                     person=None):
-        """ Make blake2b hash of the url """
+    def get_url_hash(self, url, digest_size=5, use_key=None, use_salt=None,
+                     use_person=None):
+        """ Generate blake2b hash for the url
+
+        :param digest_size: [:class:`int`] digest size
+        :param use_key: [`bool`] does the hasher need to use
+            a random key
+        :param use_salt: [`bool`] does the hasher need to use
+            a random salt
+        :param use_person: [`bool`] doest the hasher need to use
+            a random personalization
+        :return: [:class:`str`] hex encoded short part for the url
+        """
 
         kwargs = {'digest_size': digest_size}
-        if key:
+        if use_key:
             kwargs['key'] = os.urandom(blake2b.MAX_KEY_SIZE)
-        if salt:
+        if use_salt:
             kwargs['salt'] = os.urandom(blake2b.SALT_SIZE)
-        if person:
+        if use_person:
             kwargs['person'] = os.urandom(blake2b.PERSON_SIZE)
 
         hasher = blake2b(**kwargs)
