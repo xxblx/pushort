@@ -9,7 +9,7 @@ def create_indexes():
     db.urls.create_index('short_part', unique=True)
     db.urls.create_index('short_part_block')
 
-    # Spars indexes for quick navigations between url with/without
+    # Sparse indexes for quick navigations between url with/without
     # params and paths after domain
     db.urls.create_index('params', sparse=True)
     db.urls.create_index('path', sparse=True)
