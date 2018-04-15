@@ -13,7 +13,7 @@ In the first time the short part of the url creates as blake2b hash (digest size
 
 For example `https://duckduckgo.com/?q=here+is+some+text%2C+word%2C+word2+and+word3&t=ffab&ia=qa` transforms into `http://example.com/932a7a7931`. 
 
-On self-generated dataset of 2 389 815 random URLs 99.99% (2 389 813) URLs had got the unique short part in the first time. Dataset was created from top 1 000 000 domains from Alexa rank and random english words for the paths (endpoints) and GET queries parameters. 
+On self-generated dataset of 2 389 815 random URLs by the test results 99.99% (2 389 813) URLs had got the unique short part in the first time. Dataset was created from top 1 000 000 domains from Alexa rank and random english words for the paths (endpoints) and GET queries parameters. 
 
 # Usage 
 * Create database indexes - `init_db.py`
