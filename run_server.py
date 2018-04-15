@@ -10,7 +10,14 @@ from pushort.app import WebApp
 def main():
     http_server = tornado.httpserver.HTTPServer(WebApp())
     http_server.listen(8888, '127.0.0.1')
-    tornado.ioloop.IOLoop.current().start()
+    loop = tornado.ioloop.IOLoop.current()
+
+    try:
+        loop.start()
+    except KeyboardInterrupt:
+        loop.stop()
+    finally:
+        loop.close()
 
 
 if __name__ == '__main__':
