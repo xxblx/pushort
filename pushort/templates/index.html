@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block body %} 
+
+<div>
+    <form action="/" method="POST">
+	<div>
+        <label for="long_url">Enter URL</label>
+        <input type="text" name="long_url" required>
+	</div>
+
+	<div>
+        <label for="expires_in">Enter expires time in seconds</label>
+        <input type="number" name="expires_in">
+	</div>
+
+	<div>
+        <button type="submit">Create short url</button>
+	</div>
+    </form>
+</div>
+
+{% if short_url %}
+<div>
+    <label for="short_url">Short URL</label>
+    <a name="short_url" href="{{ short_url }}" rel="nofollow">{{ short_url }}</a>
+</div>
+{% end %}
+
+{% end %}
