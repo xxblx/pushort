@@ -1,9 +1,7 @@
 pushort 
 =======
 
-# Description
-
-pushort is a simple opensource tool for URL shortening.
+pushort is a tool prototype for URL shortening.
 
 * Python3.6+
 * Tornado 
@@ -23,3 +21,4 @@ On self-generated dataset of 2 389 815 random URLs by the test results 99.99% (2
 
 If you don't want to create all indexes, modify `init_db.py` and create only TTL index `expire_time`. The index is need for auto deletion of expired URLs. 
 
+Expired urls may exist for some time after expires_time is over because the background task that removes expired documents in MongoDB runs every 60 seconds. See [MongoDB docs](https://docs.mongodb.com/manual/core/index-ttl/#timing-of-the-delete-operation) for the details. 
