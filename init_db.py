@@ -15,7 +15,7 @@ def create_indexes():
     db.urls.create_index('path', sparse=True)
 
     # Setup TTL index for auto deletions of expired items
-    db.urls.create_index('expire_time', expireAfterSeconds=0)
+    db.urls.create_index('expires_time', expireAfterSeconds=0)
 
 
 if __name__ == '__main__':
