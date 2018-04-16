@@ -71,8 +71,8 @@ class BaseHandler(RequestHandler):
         url_dct = self.get_url_dct(long_url)
 
         if expires_time is not None:
-            short_part = self.create_short_part(long_url, url_dct,
-                                                expires_time)
+            short_part = await self.create_short_part(long_url, url_dct,
+                                                      expires_time)
             return urljoin(self.short_domain, url_dct['short_part'])
 
         # If no expires time try to find already created url in the db
@@ -197,7 +197,7 @@ class BaseHandler(RequestHandler):
 
 
 class IndexHandler(BaseHandler):
-    def get(self):
+    async def get(self):
         self.render('index.html', short_url=None)
 
     async def post(self):
