@@ -10,13 +10,14 @@ from .handlers import IndexHandler, ApiHandler, RedirectHandler
 
 
 class WebApp(Application):
-    def __init__(self):
+    def __init__(self, loop):
+        self._loop = loop
+
         handlers = [
             (r'/', IndexHandler),
             (r'/api', ApiHandler),
             (r'/[a-zA-Z0-9]*/?', RedirectHandler)
         ]
-
         template_path = os.path.join(os.path.dirname(__file__), 'templates')
         settings = {
             'template_path': template_path,

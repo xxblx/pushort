@@ -8,9 +8,9 @@ from pushort.app import WebApp
 
 
 def main():
-    http_server = tornado.httpserver.HTTPServer(WebApp())
-    http_server.listen(8888, '127.0.0.1')
     loop = tornado.ioloop.IOLoop.current()
+    http_server = tornado.httpserver.HTTPServer(WebApp(loop))
+    http_server.listen(8888, '127.0.0.1')
 
     try:
         loop.start()

@@ -2,11 +2,10 @@
 
 import os
 from hashlib import blake2b
+from functools import wraps, partial
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, parse_qs, urljoin
 
-from tornado.gen import coroutine
-from tornado.concurrent import run_on_executor
 from tornado.web import RequestHandler, HTTPError
 
 from pymongo.errors import DuplicateKeyError
@@ -25,8 +24,33 @@ class BaseHandler(RequestHandler):
     def short_domain(self):
         return self.application.short_domain
 
-    @coroutine
-    def get_short_url(self, long_url, expires_in=None):
+    @property
+    def _loop(self):
+        return self.application._loop
+
+    def _run_in_executor(method):
+        """ Wrapper for running methods with
+        `tornado.ioloop.IOLoop.run_in_executor`
+
+        When native coroutines are used a method decorated with
+        `tornado.concurrent.run_on_executor` can't be used with `await`
+        because it will cause an exception like
+        "TypeError: object Future can't be used in 'await' expression"
+
+        With tornado/asyncio loop and native coroutines used we need
+        to use "loop.run_in_executor"
+        """
+
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            res = self._loop.run_in_executor(
+                self.executor,
+                partial(method, self, *args, **kwargs)
+            )
+            return res
+        return wrapper
+
+    async def get_short_url(self, long_url, expires_in=None):
         """ Get the short version for the long url
 
         :param long_url: [:class:`str`] original long url
@@ -52,28 +76,26 @@ class BaseHandler(RequestHandler):
             return urljoin(self.short_domain, url_dct['short_part'])
 
         # If no expires time try to find already created url in the db
-        res = yield self.find_short_url(url_dct)
+        res = await self.find_short_url(url_dct)
         if res is not None:
             short_part = res['short_part']
         else:
-            short_part = yield self.create_short_part(long_url, url_dct,
+            short_part = await self.create_short_part(long_url, url_dct,
                                                       expires_time)
 
         return urljoin(self.short_domain, short_part)
 
-    @coroutine
-    def find_short_url(self, url_dct):
+    async def find_short_url(self, url_dct):
         """ Search for url_dct in the database """
 
         dct = url_dct.copy()
         for k in dct:
             _v = dct[k]
             dct[k] = {'$eq': _v}
-        result = yield self.db.urls.find_one(dct)
+        result = await self.db.urls.find_one(dct)
         return result
 
-    @coroutine
-    def create_short_part(self, long_url, url_dct, expires_time):
+    async def create_short_part(self, long_url, url_dct, expires_time):
         """ Create short version for original url and insert
         the short part in the database
 
@@ -90,7 +112,7 @@ class BaseHandler(RequestHandler):
         add_rand = False  # additional randomization
         while not url_inserted:
             try:
-                short_part = yield self.get_url_hash(
+                short_part = await self.get_url_hash(
                     long_url,
                     use_key=add_rand,
                     use_salt=add_rand,
@@ -98,7 +120,7 @@ class BaseHandler(RequestHandler):
                 )
                 url_dct['short_part'] = short_part
                 url_dct['short_part_block'] = short_part[:2]
-                yield self.db.urls.insert(url_dct)
+                await self.db.urls.insert(url_dct)
                 url_inserted = True
             except DuplicateKeyError:
                 # TODO: exception to logfile
@@ -136,7 +158,7 @@ class BaseHandler(RequestHandler):
 
         return dct
 
-    @run_on_executor
+    @_run_in_executor
     def get_url_hash(self, url, digest_size=5, use_key=None, use_salt=None,
                      use_person=None):
         """ Generate blake2b hash for the url
@@ -163,12 +185,14 @@ class BaseHandler(RequestHandler):
         hasher.update(url.encode())
         return hasher.hexdigest()
 
-    @coroutine
-    def find_long_url(self, short_part):
+    async def find_long_url(self, short_part):
         """ Search in the database for the short part """
 
-        dct = {'short_part': {'$eq': short_part}}
-        res = yield self.db.urls.find_one(dct)
+        dct = {
+            'short_part_block': {'$eq': short_part[:2]},
+            'short_part': {'$eq': short_part}
+        }
+        res = await self.db.urls.find_one(dct)
         return res
 
 
@@ -176,28 +200,25 @@ class IndexHandler(BaseHandler):
     def get(self):
         self.render('index.html', short_url=None)
 
-    @coroutine
-    def post(self):
+    async def post(self):
         long_url = self.get_argument('long_url')
         expires_in = self.get_argument('expires_in', default=None)
-        short_url = yield self.get_short_url(long_url, expires_in)
+        short_url = await self.get_short_url(long_url, expires_in)
         self.render('index.html', short_url=short_url)
 
 
 class ApiHandler(BaseHandler):
-    @coroutine
-    def post(self):
+    async def post(self):
         long_url = self.get_argument('long_url')
         expires_in = self.get_argument('expires_in', default=None)
-        short_url = yield self.get_short_url(long_url, expires_in)
+        short_url = await self.get_short_url(long_url, expires_in)
         self.write({'short_url': short_url})
 
 
 class RedirectHandler(BaseHandler):
-    @coroutine
-    def get(self):
+    async def get(self):
         short_part = self.request.path.strip('/')
-        url_dct = yield self.find_long_url(short_part)
+        url_dct = await self.find_long_url(short_part)
         if url_dct is None:
             raise HTTPError(404)
         self.redirect(url_dct['long_url'])
